@@ -1,0 +1,129 @@
+# Based on patch from Alpine
+diff -rup gcc-6.4.0/gcc/ada/adaint.c gcc-6.4.0-new/gcc/ada/adaint.c
+--- gcc-6.4.0/gcc/ada/adaint.c	2016-01-17 10:07:39.710926000 -0800
++++ gcc-6.4.0-new/gcc/ada/adaint.c	2018-09-01 11:45:28.684521629 -0700
+@@ -76,6 +76,11 @@
+ #include <sys/param.h>
+ #include <sys/pstat.h>
+ #endif
++ 
++#if defined (linux)
++#define _GNU_SOURCE 1
++#include <sched.h>
++#endif
+ 
+ #ifdef __PikeOS__
+ #define __BSD_VISIBLE 1
+@@ -3096,7 +3101,7 @@ __gnat_lwp_self (void)
+ 
+ /* Dynamic cpu sets */
+ 
+-cpu_set_t *
++void *
+ __gnat_cpu_alloc (size_t count)
+ {
+   return CPU_ALLOC (count);
+@@ -3109,33 +3114,33 @@ __gnat_cpu_alloc_size (size_t count)
+ }
+ 
+ void
+-__gnat_cpu_free (cpu_set_t *set)
++__gnat_cpu_free (void *set)
+ {
+-  CPU_FREE (set);
++  CPU_FREE ((cpu_set_t *) set);
+ }
+ 
+ void
+-__gnat_cpu_zero (size_t count, cpu_set_t *set)
++__gnat_cpu_zero (size_t count, void *set)
+ {
+-  CPU_ZERO_S (count, set);
++  CPU_ZERO_S (count, (cpu_set_t *) set);
+ }
+ 
+ void
+-__gnat_cpu_set (int cpu, size_t count, cpu_set_t *set)
++__gnat_cpu_set (int cpu, size_t count, void *set)
+ {
+   /* Ada handles CPU numbers starting from 1, while C identifies the first
+      CPU by a 0, so we need to adjust. */
+-  CPU_SET_S (cpu - 1, count, set);
++  CPU_SET_S (cpu - 1, count, (cpu_set_t *) set);
+ }
+ 
+ #else /* !CPU_ALLOC */
+ 
+ /* Static cpu sets */
+ 
+-cpu_set_t *
++void *
+ __gnat_cpu_alloc (size_t count ATTRIBUTE_UNUSED)
+ {
+-  return (cpu_set_t *) xmalloc (sizeof (cpu_set_t));
++  return xmalloc (sizeof (cpu_set_t));
+ }
+ 
+ size_t
+@@ -3145,23 +3150,23 @@ __gnat_cpu_alloc_size (size_t count ATTR
+ }
+ 
+ void
+-__gnat_cpu_free (cpu_set_t *set)
++__gnat_cpu_free (void *set)
+ {
+   free (set);
+ }
+ 
+ void
+-__gnat_cpu_zero (size_t count ATTRIBUTE_UNUSED, cpu_set_t *set)
++__gnat_cpu_zero (size_t count ATTRIBUTE_UNUSED, void *set)
+ {
+-  CPU_ZERO (set);
++  CPU_ZERO ((cpu_set_t *) set);
+ }
+ 
+ void
+-__gnat_cpu_set (int cpu, size_t count ATTRIBUTE_UNUSED, cpu_set_t *set)
++__gnat_cpu_set (int cpu, size_t count ATTRIBUTE_UNUSED, void *set)
+ {
+   /* Ada handles CPU numbers starting from 1, while C identifies the first
+      CPU by a 0, so we need to adjust. */
+-  CPU_SET (cpu - 1, set);
++  CPU_SET (cpu - 1, (cpu_set_t *) set);
+ }
+ #endif /* !CPU_ALLOC */
+ #endif /* __linux__ */
+diff -rup gcc-6.4.0/gcc/ada/adaint.h gcc-6.4.0-new/gcc/ada/adaint.h
+--- gcc-6.4.0/gcc/ada/adaint.h	2015-05-30 14:23:24.985188000 -0700
++++ gcc-6.4.0-new/gcc/ada/adaint.h	2018-09-01 11:45:28.691188005 -0700
+@@ -287,13 +287,11 @@ extern void   *__gnat_lwp_self			   (voi
+ 
+ /* Routines for interface to required CPU set primitives */
+ 
+-#include <sched.h>
+-
+-extern cpu_set_t *__gnat_cpu_alloc                 (size_t);
++extern void * __gnat_cpu_alloc                 (size_t);
+ extern size_t __gnat_cpu_alloc_size                (size_t);
+-extern void   __gnat_cpu_free                  (cpu_set_t *);
+-extern void   __gnat_cpu_zero                      (size_t, cpu_set_t *);
+-extern void   __gnat_cpu_set                       (int, size_t, cpu_set_t *);
++extern void   __gnat_cpu_free                  (void *);
++extern void   __gnat_cpu_zero                      (size_t, void *);
++extern void   __gnat_cpu_set                       (int, size_t, void *);
+ #endif
+ 
+ #if defined (_WIN32)
+diff -rup gcc-6.4.0/gcc/ada/gcc-interface/Makefile.in gcc-6.4.0-new/gcc/ada/gcc-interface/Makefile.in
+--- gcc-6.4.0/gcc/ada/gcc-interface/Makefile.in	2017-03-28 07:22:29.504374000 -0700
++++ gcc-6.4.0-new/gcc/ada/gcc-interface/Makefile.in	2018-09-01 11:45:28.691188005 -0700
+@@ -1971,7 +1971,7 @@ ifeq ($(strip $(filter-out powerpc% linu
+ endif
+ 
+ # ARM linux, GNU eabi
+-ifeq ($(strip $(filter-out arm% linux-gnueabi%,$(target_cpu) $(target_os))),)
++ifeq ($(strip $(filter-out arm% linux-gnueabi% linux-musleabi% linux-muslgnueabi%,$(target_cpu) $(target_os))),)
+   LIBGNAT_TARGET_PAIRS = \
+   a-intnam.ads<a-intnam-linux.ads \
+   s-inmaop.adb<s-inmaop-posix.adb \
