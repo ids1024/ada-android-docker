@@ -21,7 +21,7 @@ RUN $ANDROID_NDK_HOME/build/tools/make-standalone-toolchain.sh \
     --install-dir=./ndk-chain
 
 ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-6.4.0/gcc-6.4.0.tar.xz
-ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.28.tar.bz2
+ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
 
 # Download and extract binutils and gcc
 RUN wget $GCC_URL $BINUTILS_URL \
@@ -57,9 +57,8 @@ ARG CONFIGURE_ARGS="\
     CFLAGS_FOR_TARGET=-D__ANDROID_API__=14"
 
 # Build binutils
-RUN cd binutils \
-    && mkdir build \
-    && cd build \
+RUN mkdir binutils/build \
+    && cd binutils/build \
     && ../configure $CONFIGURE_ARGS \
     && make -j$(nproc) \
     && make install
@@ -74,7 +73,8 @@ RUN cd gcc \
     && make -j$(nproc) \
     && make install
 
-RUN strip $(find toolchain/bin toolchain/libexec -type f) || true
+RUN strip $(find toolchain/bin toolchain/libexec -type f) || true \
+    && rm -r toolchain/share toolchain/include toolchain/x86_64-pc-linux-musl
 
 FROM alpine:3.8
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
