@@ -44,7 +44,7 @@ ARG CONFIGURE_ARGS="\
     --with-arch=armv7-a \
     --enable-languages=ada \
     --enable-threads=posix \
-    --enable-shared \
+    --disable-shared \
     --enable-default-pie \
     --disable-tls \
     --enable-initfini-array \
@@ -78,7 +78,6 @@ FROM alpine:3.8
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
 RUN apk add --no-cache qemu-arm
 COPY --from=build /ada-android/toolchain/arm-linux-androideabi /usr/arm-linux-androideabi
-COPY --from=build /ada-android/toolchain/x86_64-pc-linux-musl /usr/x86_64-pc-linux-musl
 COPY --from=build /ada-android/toolchain/bin /usr/bin
 COPY --from=build /ada-android/toolchain/lib /usr/lib
 COPY --from=build /ada-android/toolchain/libexec /usr/libexec
