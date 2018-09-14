@@ -1,15 +1,40 @@
 FROM alpine:3.8 AS build
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
 
+RUN apk add --no-cache build-base gcc-gnat zlib-dev
+
+WORKDIR /ada-android
+COPY ada-musl.patch .
+
 ARG NDK_URL=https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
+
+# Copy libraries from android ndk
+RUN wget $NDK_URL \
+    && unzip android-ndk-*.zip \
+    && rm android-ndk-*.zip \
+    && mkdir -p ndk-chain/usr/lib ndk-chain/usr/include \
+    && cp -r android-ndk-*/platforms/android-14/arch-arm/usr/lib/* ndk-chain/usr/lib \
+    && cp -r android-ndk-*/sysroot/usr/include/* ndk-chain/usr/include \
+    && ln -s arm-linux-androideabi/asm ndk-chain/usr/include \
+    && rm -r android-ndk-*
+
 ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-6.4.0/gcc-6.4.0.tar.xz
 ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
+
+# Download and extract binutils, gcc, and prerequisites
+RUN wget $GCC_URL $BINUTILS_URL \
+    && tar xf gcc-* \
+    && tar xf binutils-* \
+    && rm *.tar.* \
+    && mv binutils-* binutils \
+    && mv gcc-* gcc \
+    && cd gcc \
+    && patch -p1 -i ../ada-musl.patch \
+    && ./contrib/download_prerequisites
 
 # https://developer.android.com/ndk/guides/abis#v7a
 # Since Android 5.0, only PIE executables are supported.
 # PIE doesn't work on 4.0 and earlier; static linking solves that.
-#
-# --with-sysroot=/ada-android/toolchain/arm-linux-androideabi \
 ARG CONFIGURE_ARGS="\
     --with-sysroot=/ada-android/ndk-chain \
     --prefix=/ada-android/toolchain \
@@ -30,39 +55,13 @@ ARG CONFIGURE_ARGS="\
     --disable-gdb \
     CFLAGS_FOR_TARGET=-D__ANDROID_API__=14"
 
-RUN apk add --no-cache build-base gcc-gnat zlib-dev
-
-WORKDIR /ada-android
-COPY ada-musl.patch .
-
-# Copy libraries from android ndk
-RUN wget $NDK_URL \
-    && unzip android-ndk-*.zip \
-    && rm android-ndk-*.zip \
-    && mkdir -p ndk-chain/usr/lib ndk-chain/usr/include \
-    && cp -r android-ndk-*/platforms/android-14/arch-arm/usr/lib/* ndk-chain/usr/lib \
-    && cp -r android-ndk-*/sysroot/usr/include/* ndk-chain/usr/include \
-    && ln -s arm-linux-androideabi/asm ndk-chain/usr/include \
-    && rm -r android-ndk-*
-
-# Download and extract binutils, gcc, and prerequisites
-RUN wget $GCC_URL $BINUTILS_URL \
-    && tar xf gcc-* \
-    && tar xf binutils-* \
-    && rm *.tar.* \
-    && mv binutils-* binutils \
-    && mv gcc-* gcc \
-    && cd gcc \
-    && patch -p1 -i ../ada-musl.patch \
-    && ./contrib/download_prerequisites
-
 # Build binutils
 RUN mkdir binutils/build \
     && cd binutils/build \
     && ../configure $CONFIGURE_ARGS \
     && make -j$(nproc) \
     && make install-strip \
-    && cd ..  \
+    && cd .. \
     && rm -r build
 
 # Build gcc
