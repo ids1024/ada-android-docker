@@ -4,7 +4,6 @@ LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
 RUN apk add --no-cache build-base gcc-gnat zlib-dev
 
 WORKDIR /ada-android
-COPY ada-musl.patch ada-x86-android.patch ./
 
 ARG NDK_URL=https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
 
@@ -26,6 +25,7 @@ ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-6.4.0/gcc-6.4.0.tar.xz
 ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
 
 # Download and extract binutils, gcc, and prerequisites
+COPY ada-musl.patch ada-x86-android.patch ./
 RUN wget $GCC_URL $BINUTILS_URL \
     && tar xf gcc-* \
     && tar xf binutils-* \
@@ -115,5 +115,5 @@ COPY --from=build /ada-android/toolchain/bin /usr/bin
 COPY --from=build /ada-android/toolchain/lib /usr/lib
 COPY --from=build /ada-android/toolchain/libexec /usr/libexec
 COPY --from=build /ada-android/ndk-chain-arm/usr/lib /usr/arm-linux-androideabi/lib/armv7-a
-COPY --from=build /ada-android/ndk-chain-x86/usr/lib /usr/i686-linux-android/lib/i686
+COPY --from=build /ada-android/ndk-chain-x86/usr/lib /usr/i686-linux-android/lib
 ENV LD_LIBRARY_PATH=/usr/x86_64-pc-linux-musl/arm-linux-androideabi/lib:/usr/x86_64-pc-linux-musl/i686-linux-android/lib

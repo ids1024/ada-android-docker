@@ -1,6 +1,6 @@
 diff -rup gcc-6.4.0/gcc/ada/init.c gcc-6.4.0-new/gcc/ada/init.c
 --- gcc-6.4.0/gcc/ada/init.c	2015-11-25 07:16:44.605929000 -0800
-+++ gcc-6.4.0-new/gcc/ada/init.c	2018-10-28 18:33:27.951587147 -0700
++++ gcc-6.4.0-new/gcc/ada/init.c	2018-10-28 21:43:17.804437431 -0700
 @@ -2510,8 +2510,45 @@ __gnat_adjust_context_for_raise (int sig
  {
    mcontext_t *mcontext = &((ucontext_t *) ucontext)->uc_mcontext;
@@ -48,3 +48,16 @@ diff -rup gcc-6.4.0/gcc/ada/init.c gcc-6.4.0-new/gcc/ada/init.c
  }
  
  static void
+@@ -2552,8 +2589,12 @@ __gnat_error_handler (int sig, siginfo_t
+ {
+   __gnat_adjust_context_for_raise (sig, ucontext);
+ 
++  #if defined (__ARMEL__)
+   __gnat_sigtramp (sig, (void *) si, (void *) ucontext,
+ 		   (__sigtramphandler_t *)&__gnat_map_signal);
++  #else
++  __gnat_map_signal (sig, si, ucontext);
++  #endif
+ }
+ 
+ /* This must be in keeping with System.OS_Interface.Alternate_Stack_Size.  */
