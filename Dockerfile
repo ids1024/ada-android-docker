@@ -1,4 +1,4 @@
-FROM alpine:3.8 AS build
+FROM alpine:edge AS build
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
 
 RUN apk add --no-cache build-base gcc-gnat zlib-dev
@@ -21,11 +21,11 @@ RUN wget $NDK_URL \
     && ln -s i686-linux-android/asm ndk-chain-x86/usr/include \
     && rm -r android-ndk-*
 
-ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-6.4.0/gcc-6.4.0.tar.xz
+ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.xz
 ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
 
 # Download and extract binutils, gcc, and prerequisites
-COPY ada-musl.patch ada-x86-android.patch ./
+COPY ada-musl.patch ada-x86-android.patch download_prerequisites-busybox.patch ./
 RUN wget $GCC_URL $BINUTILS_URL \
     && tar xf gcc-* \
     && tar xf binutils-* \
@@ -35,6 +35,7 @@ RUN wget $GCC_URL $BINUTILS_URL \
     && cd gcc \
     && patch -p1 -i ../ada-musl.patch \
     && patch -p1 -i ../ada-x86-android.patch \
+    && patch -p1 -i ../download_prerequisites-busybox.patch \
     && ./contrib/download_prerequisites
 
 # https://developer.android.com/ndk/guides/abis#v7a
@@ -106,7 +107,7 @@ RUN mkdir gcc/build-x86 \
     && rm -r build-x86
 
 # Copy toolchain to a clean image
-FROM alpine:3.8
+FROM alpine:edge
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
 RUN apk add --no-cache qemu-arm
 COPY --from=build /ada-android/toolchain/arm-linux-androideabi /usr/arm-linux-androideabi
