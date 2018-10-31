@@ -86,7 +86,8 @@ ARG X86_CONFIGURE_ARGS="\
     --with-sysroot=/ada-android/ndk-chain-x86 \
     --with-arch=i686 \
     --with-sss3 \
-    --with-fpmath=sse"
+    --with-fpmath=sse \
+    --enable-sjlj-exceptions"
 
 # Build x86 binutils
 RUN mkdir binutils/build-x86 \
