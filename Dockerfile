@@ -38,13 +38,13 @@ RUN wget $GCC_URL $BINUTILS_URL \
     && ./contrib/download_prerequisites
 
 # https://developer.android.com/ndk/guides/abis#v7a
-# Since Android 5.0, only PIE executables are supported.
-# PIE doesn't work on 4.0 and earlier; static linking solves that.
-ENV CONFIGURE_ARGS="\
+ENV CONFIGURE_ARGS \
     --prefix=/toolchain \
     --enable-languages=ada \
     --enable-threads=posix \
     --disable-shared \
+    # Since Android 5.0, only PIE executables are supported.
+    # PIE doesn't work on 4.0 and earlier; static linking solves that.
     --enable-default-pie \
     --disable-tls \
     --enable-initfini-array \
@@ -53,17 +53,17 @@ ENV CONFIGURE_ARGS="\
     --disable-werror \
     --with-system-zlib \
     --disable-gdb \
-    CFLAGS_FOR_TARGET=-D__ANDROID_API__=14"
+    CFLAGS_FOR_TARGET=-D__ANDROID_API__=14
 
 
 # Stage to build ARM binutils and gcc
 FROM src AS gcc-arm
-ENV ARM_CONFIGURE_ARGS="\
+ENV ARM_CONFIGURE_ARGS \
     --target=arm-linux-androideabi \
     --with-sysroot=/ndk-chain-arm \
     --with-arch=armv7-a \
     --with-fpu=vfpv3-d16 \
-    --with-float=soft"
+    --with-float=soft
 
 RUN mkdir binutils/build-arm \
     && cd binutils/build-arm \
@@ -84,13 +84,13 @@ RUN mkdir gcc/build-arm \
 
 # Stage to build x86 binutils and gcc
 FROM src AS gcc-x86
-ENV X86_CONFIGURE_ARGS="\
+ENV X86_CONFIGURE_ARGS \
     --target=i686-linux-android \
     --with-sysroot=/ndk-chain-x86 \
     --with-arch=i686 \
     --with-sss3 \
     --with-fpmath=sse \
-    --enable-sjlj-exceptions"
+    --enable-sjlj-exceptions
 
 RUN mkdir binutils/build-x86 \
     && cd binutils/build-x86 \
