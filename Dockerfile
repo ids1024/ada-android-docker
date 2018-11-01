@@ -36,6 +36,7 @@ RUN wget $GCC_URL $BINUTILS_URL \
     && patch -p1 -i ../ada-x86-android.patch \
     && patch -p1 -i ../download_prerequisites-busybox.patch \
     && ./contrib/download_prerequisites
+COPY build-binutils-gcc.sh ./
 
 # https://developer.android.com/ndk/guides/abis#v7a
 ENV CONFIGURE_ARGS \
@@ -58,55 +59,27 @@ ENV CONFIGURE_ARGS \
 
 # Stage to build ARM binutils and gcc
 FROM src AS gcc-arm
-ENV ARM_CONFIGURE_ARGS \
+ENV ARCH_CONFIGURE_ARGS \
     --target=arm-linux-androideabi \
     --with-sysroot=/ndk-chain-arm \
     --with-arch=armv7-a \
     --with-fpu=vfpv3-d16 \
     --with-float=soft
-
-RUN mkdir binutils/build-arm \
-    && cd binutils/build-arm \
-    && ../configure $ARM_CONFIGURE_ARGS $CONFIGURE_ARGS \
-    && make -j$(nproc) \
-    && make install-strip \
-    && cd .. \
-    && rm -r build-arm
-
-RUN mkdir gcc/build-arm \
-    && cd gcc/build-arm \
-    && ../configure $ARM_CONFIGURE_ARGS $CONFIGURE_ARGS \
-    && make -j$(nproc) \
-    && make install-strip \
-    && cd .. \
-    && rm -r build-arm /toolchain/share
+RUN cd binutils && ../build-binutils-gcc.sh
+RUN cd gcc && ../build-binutils-gcc.sh
 
 
 # Stage to build x86 binutils and gcc
 FROM src AS gcc-x86
-ENV X86_CONFIGURE_ARGS \
+ENV ARCH_CONFIGURE_ARGS \
     --target=i686-linux-android \
     --with-sysroot=/ndk-chain-x86 \
     --with-arch=i686 \
     --with-sss3 \
     --with-fpmath=sse \
     --enable-sjlj-exceptions
-
-RUN mkdir binutils/build-x86 \
-    && cd binutils/build-x86 \
-    && ../configure $X86_CONFIGURE_ARGS $CONFIGURE_ARGS \
-    && make -j$(nproc) \
-    && make install-strip \
-    && cd .. \
-    && rm -r build-x86
-
-RUN mkdir gcc/build-x86 \
-    && cd gcc/build-x86 \
-    && ../configure $X86_CONFIGURE_ARGS $CONFIGURE_ARGS \
-    && make -j$(nproc) \
-    && make install-strip \
-    && cd .. \
-    && rm -r build-x86 /toolchain/share
+RUN cd binutils && ../build-binutils-gcc.sh
+RUN cd gcc && ../build-binutils-gcc.sh
 
 
 # Copy toolchain to a clean image
