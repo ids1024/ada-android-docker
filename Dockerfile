@@ -82,11 +82,32 @@ RUN cd binutils && ../build-binutils-gcc.sh
 RUN cd gcc && ../build-binutils-gcc.sh
 
 
+# Stage to build gprbuild
+FROM alpine:edge as gprbuild
+RUN apk add --no-cache build-base gcc-gnat
+
+ARG GPRBUILD_URL=http://mirrors.cdn.adacore.com/art/591c45e2c7a447af2deecff7
+ARG XMLADA_URL=http://mirrors.cdn.adacore.com/art/591aeb88c7a4473fcbb154f8
+
+RUN wget $GPRBUILD_URL -O gprbuild.tar.gz \
+    && wget $XMLADA_URL -O xmlada.tar.gz \
+    && tar xf gprbuild.tar.gz \
+    && tar xf xmlada.tar.gz \
+    && mv gprbuild-gpl-2017-src gprbuild \
+    && mv xmlada-gpl-2017-src xmlada \
+    && rm *.tar.*
+
+RUN cd gprbuild \
+    && mkdir -p /toolchain/bin /toolchain/libexec/gprbuild /toolchain/share/gprconfig \
+    && ./bootstrap.sh --prefix=/toolchain --with-xmlada=/xmlada
+
+
 # Copy toolchain to a clean image
 FROM alpine:edge
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
-RUN apk add --no-cache qemu-arm
+RUN apk add --no-cache qemu-arm libgnat
 COPY --from=gcc-arm /toolchain /usr/
 COPY --from=gcc-x86 /toolchain /usr/
+COPY --from=gprbuild /toolchain /usr/
 COPY --from=ndk /ndk-chain-arm/usr/lib /usr/arm-linux-androideabi/lib/armv7-a
 COPY --from=ndk /ndk-chain-x86/usr/lib /usr/i686-linux-android/lib
