@@ -1,5 +1,7 @@
+ARG BASE_IMAGE=alpine:3.9.2
+
 # Stage extracting libraries and includes from the Android NDK
-FROM alpine:edge AS ndk
+FROM $BASE_IMAGE AS ndk
 ARG NDK_URL=https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
 
 RUN wget $NDK_URL \
@@ -83,7 +85,7 @@ RUN cd gcc && ../build-binutils-gcc.sh
 
 
 # Stage to build gprbuild
-FROM alpine:edge as gprbuild
+FROM $BASE_IMAGE as gprbuild
 RUN apk add --no-cache build-base gcc-gnat
 
 ARG GPRBUILD_URL=http://mirrors.cdn.adacore.com/art/591c45e2c7a447af2deecff7
@@ -103,7 +105,7 @@ RUN cd gprbuild \
 
 
 # Copy toolchain to a clean image
-FROM alpine:edge
+FROM $BASE_IMAGE
 LABEL maintainer="Ian Douglas Scott <ian@iandouglasscott.com>"
 RUN apk add --no-cache qemu-arm libgnat
 COPY --from=gcc-arm /toolchain /usr/
