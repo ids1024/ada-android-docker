@@ -1,18 +1,18 @@
-ARG BASE_IMAGE=alpine:3.9.2
+ARG BASE_IMAGE=alpine:3.13.3
 
 # Stage extracting libraries and includes from the Android NDK
 FROM $BASE_IMAGE AS ndk
-ARG NDK_URL=https://dl.google.com/android/repository/android-ndk-r17c-linux-x86_64.zip
+ARG NDK_URL=https://dl.google.com/android/repository/android-ndk-r21e-linux-x86_64.zip
 
 RUN wget $NDK_URL \
     && unzip android-ndk-*.zip \
     && rm android-ndk-*.zip \
     # Libraries and includes for arm
-    && cp -r android-ndk-*/platforms/android-14/arch-arm ndk-chain-arm \
+    && cp -r android-ndk-*/platforms/android-16/arch-arm ndk-chain-arm \
     && cp -r android-ndk-*/sysroot/usr/include ndk-chain-arm/usr \
     && ln -s arm-linux-androideabi/asm ndk-chain-arm/usr/include \
     # Libraries and includes for x86
-    && cp -r android-ndk-*/platforms/android-14/arch-x86 ndk-chain-x86 \
+    && cp -r android-ndk-*/platforms/android-16/arch-x86 ndk-chain-x86 \
     && cp -r android-ndk-*/sysroot/usr/include ndk-chain-x86/usr \
     && ln -s i686-linux-android/asm ndk-chain-x86/usr/include \
     && rm -r android-ndk-*
@@ -22,8 +22,8 @@ RUN wget $NDK_URL \
 FROM ndk as src
 RUN apk add --no-cache build-base gcc-gnat zlib-dev
 
-ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-8.2.0/gcc-8.2.0.tar.xz
-ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.31.1.tar.xz
+ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-10.2.0/gcc-10.2.0.tar.xz
+ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.36.1.tar.xz
 
 # Download and extract binutils, gcc, and prerequisites
 COPY ada-musl.patch ada-x86-android.patch download_prerequisites-busybox.patch ./
@@ -46,8 +46,6 @@ ENV CONFIGURE_ARGS \
     --enable-languages=ada \
     --enable-threads=posix \
     --disable-shared \
-    # Since Android 5.0, only PIE executables are supported.
-    # PIE doesn't work on 4.0 and earlier; static linking solves that.
     --enable-default-pie \
     --disable-tls \
     --enable-initfini-array \
@@ -56,7 +54,7 @@ ENV CONFIGURE_ARGS \
     --disable-werror \
     --with-system-zlib \
     --disable-gdb \
-    CFLAGS_FOR_TARGET=-D__ANDROID_API__=14
+    CFLAGS_FOR_TARGET=-D__ANDROID_API__=16
 
 
 # Stage to build ARM binutils and gcc
@@ -86,22 +84,7 @@ RUN cd gcc && ../build-binutils-gcc.sh
 
 # Stage to build gprbuild
 FROM $BASE_IMAGE as gprbuild
-RUN apk add --no-cache build-base gcc-gnat
-
-ARG GPRBUILD_URL=http://mirrors.cdn.adacore.com/art/591c45e2c7a447af2deecff7
-ARG XMLADA_URL=http://mirrors.cdn.adacore.com/art/591aeb88c7a4473fcbb154f8
-
-RUN wget $GPRBUILD_URL -O gprbuild.tar.gz \
-    && wget $XMLADA_URL -O xmlada.tar.gz \
-    && tar xf gprbuild.tar.gz \
-    && tar xf xmlada.tar.gz \
-    && mv gprbuild-gpl-2017-src gprbuild \
-    && mv xmlada-gpl-2017-src xmlada \
-    && rm *.tar.*
-
-RUN cd gprbuild \
-    && mkdir -p /toolchain/bin /toolchain/libexec/gprbuild /toolchain/share/gprconfig \
-    && ./bootstrap.sh --prefix=/toolchain --with-xmlada=/xmlada
+RUN apk add --no-cache build-base gcc-gnat gprbuild
 
 
 # Copy toolchain to a clean image
