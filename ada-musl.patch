@@ -1,9 +1,70 @@
-# From https://git.alpinelinux.org/cgit/aports/tree/main/gcc?h=master
+# From https://git.alpinelinux.org/aports/plain/main/gcc/0027-ada-musl-support-fixes.patch
+From 8bf9618294153d345905564ff68e2e3be810b8a4 Mon Sep 17 00:00:00 2001
+From: Ariadne Conill <ariadne@dereferenced.org>
+Date: Fri, 21 Aug 2020 07:07:48 +0000
+Subject: [PATCH 27/40] ada: musl support fixes
+
+---
+ gcc/ada/Makefile.rtl | 10 +++++-----
+ gcc/ada/adaint.c     | 34 +++++++++++++++++++---------------
+ gcc/ada/adaint.h     | 10 ++++------
+ gcc/ada/terminals.c  |  8 ++++----
+ 4 files changed, 32 insertions(+), 30 deletions(-)
+
+diff --git a/gcc/ada/Makefile.rtl b/gcc/ada/Makefile.rtl
+index 55ff9b0f3d5..0fadf4e4b79 100644
+--- a/gcc/ada/Makefile.rtl
++++ b/gcc/ada/Makefile.rtl
+@@ -1533,7 +1533,7 @@ ifeq ($(strip $(filter-out %86 linux%,$(target_cpu) $(target_os))),)
+   s-intman.adb<libgnarl/s-intman__posix.adb \
+   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   a-exetim.adb<libgnarl/a-exetim__posix.adb \
+   a-exetim.ads<libgnarl/a-exetim__default.ads \
+   s-linux.ads<libgnarl/s-linux.ads \
+@@ -2083,7 +2083,7 @@ ifeq ($(strip $(filter-out powerpc% linux%,$(target_cpu) $(target_os))),)
+   s-osinte.adb<libgnarl/s-osinte__posix.adb \
+   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   $(ATOMICS_TARGET_PAIRS) \
+   $(ATOMICS_BUILTINS_TARGET_PAIRS) \
+   system.ads<libgnat/system-linux-ppc.ads
+@@ -2112,7 +2112,7 @@ ifeq ($(strip $(filter-out powerpc% linux%,$(target_cpu) $(target_os))),)
+ endif
+ 
+ # ARM linux, GNU eabi
+-ifeq ($(strip $(filter-out arm% linux-gnueabi%,$(target_cpu) $(target_os))),)
++ifeq ($(strip $(filter-out arm% linux-gnueabi% linux-musleabi% linux-muslgnueabi%,$(target_cpu) $(target_os))),)
+   LIBGNAT_TARGET_PAIRS = \
+   a-intnam.ads<libgnarl/a-intnam__linux.ads \
+   s-inmaop.adb<libgnarl/s-inmaop__posix.adb \
+@@ -2305,7 +2305,7 @@ ifeq ($(strip $(filter-out %ia64 linux%,$(target_cpu) $(target_os))),)
+   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
+   s-taspri.ads<libgnarl/s-taspri__posix-noaltstack.ads \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   $(ATOMICS_TARGET_PAIRS) \
+   $(ATOMICS_BUILTINS_TARGET_PAIRS) \
+   system.ads<libgnat/system-linux-ia64.ads
+@@ -2401,7 +2401,7 @@ ifeq ($(strip $(filter-out %x86_64 linux%,$(target_cpu) $(target_os))),)
+   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
+   s-taspri.ads<libgnarl/s-taspri__posix.ads \
+   $(TRASYM_DWARF_UNIX_PAIRS) \
+-  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
++  s-tsmona.adb<libgnat/s-tsmona.adb \
+   $(ATOMICS_TARGET_PAIRS) \
+   $(X86_64_TARGET_PAIRS) \
+   system.ads<libgnat/system-linux-x86.ads
 diff --git a/gcc/ada/adaint.c b/gcc/ada/adaint.c
-index 3b0aea9..ee0bb69 100644
+index 595abf87d65..00858c24f53 100644
 --- a/gcc/ada/adaint.c
 +++ b/gcc/ada/adaint.c
-@@ -76,6 +76,11 @@
+@@ -90,6 +90,11 @@
  #include <sys/param.h>
  #include <sys/pstat.h>
  #endif
@@ -15,7 +76,7 @@ index 3b0aea9..ee0bb69 100644
  
  #ifdef __PikeOS__
  #define __BSD_VISIBLE 1
-@@ -3255,7 +3260,6 @@ __gnat_lwp_self (void)
+@@ -3308,7 +3313,6 @@ __gnat_lwp_self (void)
  #endif
  
  #if defined (__linux__)
@@ -23,7 +84,7 @@ index 3b0aea9..ee0bb69 100644
  
  /* glibc versions earlier than 2.7 do not define the routines to handle
     dynamically allocated CPU sets. For these targets, we use the static
-@@ -3265,7 +3269,7 @@ __gnat_lwp_self (void)
+@@ -3318,7 +3322,7 @@ __gnat_lwp_self (void)
  
  /* Dynamic cpu sets */
  
@@ -32,7 +93,7 @@ index 3b0aea9..ee0bb69 100644
  __gnat_cpu_alloc (size_t count)
  {
    return CPU_ALLOC (count);
-@@ -3278,33 +3282,33 @@ __gnat_cpu_alloc_size (size_t count)
+@@ -3331,33 +3335,33 @@ __gnat_cpu_alloc_size (size_t count)
  }
  
  void
@@ -74,7 +135,7 @@ index 3b0aea9..ee0bb69 100644
  }
  
  size_t
-@@ -3314,23 +3318,23 @@ __gnat_cpu_alloc_size (size_t count ATTRIBUTE_UNUSED)
+@@ -3367,23 +3371,23 @@ __gnat_cpu_alloc_size (size_t count ATTRIBUTE_UNUSED)
  }
  
  void
@@ -104,7 +165,7 @@ index 3b0aea9..ee0bb69 100644
  #endif /* !CPU_ALLOC */
  #endif /* __linux__ */
 diff --git a/gcc/ada/adaint.h b/gcc/ada/adaint.h
-index 0d12f7e..a063b47 100644
+index 311e240dfcc..1c4d0050103 100644
 --- a/gcc/ada/adaint.h
 +++ b/gcc/ada/adaint.h
 @@ -316,13 +316,11 @@ extern void   *__gnat_lwp_self			   (void);
@@ -126,77 +187,19 @@ index 0d12f7e..a063b47 100644
  
  #if defined (_WIN32)
 diff --git a/gcc/ada/terminals.c b/gcc/ada/terminals.c
-index 7025f57..207b50d 100644
+index af4417fab90..bab6bf3ca87 100644
 --- a/gcc/ada/terminals.c
 +++ b/gcc/ada/terminals.c
-@@ -1108,13 +1108,6 @@ __gnat_setup_winsize (void *desc, int rows, int columns)
- #include <stdio.h>
- #include <stdlib.h>
+@@ -1145,7 +1145,7 @@ __gnat_setup_winsize (void *desc, int rows, int columns)
+ /* POSIX does not specify how to open the master side of a terminal.Several
+    methods are available (system specific):
+       1- using a cloning device (USE_CLONE_DEVICE)
+-      2- getpt                  (USE_GETPT)
++      2- posix_openpt           (USE_POSIX_OPENPT)
+       3- openpty                (USE_OPENPTY)
  
--/* On some system termio is either absent or including it will disable termios
--   (HP-UX) */
--#if !defined (__hpux__) && !defined (BSD) && !defined (__APPLE__) \
--  && !defined (__rtems__) && !defined (__QNXNTO__)
--#   include <termio.h>
--#endif
--
- #include <sys/ioctl.h>
- #include <termios.h>
- #include <fcntl.h>
-diff --git a/gcc/ada/gcc-interface/Makefile.in b/gcc/ada/gcc-interface/Makefile.in
-index ebb955e..08cfbee 100644
---- a/gcc/ada/gcc-interface/Makefile.in
-+++ b/gcc/ada/gcc-interface/Makefile.in
-@@ -1028,7 +1028,7 @@ ifeq ($(strip $(filter-out %86 linux%,$(target_cpu) $(target_os))),)
-   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
-   $(TRASYM_DWARF_UNIX_PAIRS) \
-   g-sercom.adb<libgnat/g-sercom__linux.adb \
--  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
-+  s-tsmona.adb<libgnat/s-tsmona.adb \
-   a-exetim.adb<libgnarl/a-exetim__posix.adb \
-   a-exetim.ads<libgnarl/a-exetim__default.ads \
-   s-linux.ads<libgnarl/s-linux.ads \
-@@ -1545,7 +1545,7 @@ ifeq ($(strip $(filter-out powerpc% linux%,$(target_cpu) $(target_os))),)
-   s-tpopsp.adb<libgnarl/s-tpopsp__tls.adb \
-   g-sercom.adb<libgnat/g-sercom__linux.adb \
-   $(TRASYM_DWARF_UNIX_PAIRS) \
--  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
-+  s-tsmona.adb<libgnat/s-tsmona.adb \
-   $(ATOMICS_TARGET_PAIRS) \
-   $(ATOMICS_BUILTINS_TARGET_PAIRS) \
-   system.ads<libgnat/system-linux-ppc.ads
-@@ -1574,7 +1574,7 @@ ifeq ($(strip $(filter-out powerpc% linux%,$(target_cpu) $(target_os))),)
- endif
- 
- # ARM linux, GNU eabi
--ifeq ($(strip $(filter-out arm% linux-gnueabi%,$(target_cpu) $(target_os))),)
-+ifeq ($(strip $(filter-out arm% linux-gnueabi% linux-musleabi% linux-muslgnueabi%,$(target_cpu) $(target_os))),)
-   LIBGNAT_TARGET_PAIRS = \
-   a-intnam.ads<libgnarl/a-intnam__linux.ads \
-   s-inmaop.adb<libgnarl/s-inmaop__posix.adb \
-@@ -1774,7 +1774,7 @@ ifeq ($(strip $(filter-out %ia64 linux%,$(target_cpu) $(target_os))),)
-   s-taspri.ads<libgnarl/s-taspri__posix-noaltstack.ads \
-   g-sercom.adb<libgnat/g-sercom__linux.adb \
-   $(TRASYM_DWARF_UNIX_PAIRS) \
--  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
-+  s-tsmona.adb<libgnat/s-tsmona.adb \
-   $(ATOMICS_TARGET_PAIRS) \
-   $(ATOMICS_BUILTINS_TARGET_PAIRS) \
-   system.ads<libgnat/system-linux-ia64.ads
-@@ -1871,7 +1871,7 @@ ifeq ($(strip $(filter-out %x86_64 linux%,$(target_cpu) $(target_os))),)
-   s-taspri.ads<libgnarl/s-taspri__posix.ads \
-   g-sercom.adb<libgnat/g-sercom__linux.adb \
-   $(TRASYM_DWARF_UNIX_PAIRS) \
--  s-tsmona.adb<libgnat/s-tsmona__linux.adb \
-+  s-tsmona.adb<libgnat/s-tsmona.adb \
-   $(ATOMICS_TARGET_PAIRS) \
-   $(X86_64_TARGET_PAIRS) \
-   system.ads<libgnat/system-linux-x86.ads
-diff --git a/gcc/ada/terminals.c b/gcc/ada/terminals.c
-index 207b50d..bd3a02c 100644
---- a/gcc/ada/terminals.c
-+++ b/gcc/ada/terminals.c
-@@ -1152,7 +1152,7 @@ __gnat_setup_winsize (void *desc, int rows, int columns)
+    When using the cloning device method, the macro USE_CLONE_DEVICE should
+@@ -1159,7 +1159,7 @@ __gnat_setup_winsize (void *desc, int rows, int columns)
  #if defined (__APPLE__) || defined (BSD)
  #define USE_OPENPTY
  #elif defined (__linux__)
@@ -205,14 +208,17 @@ index 207b50d..bd3a02c 100644
  #elif defined (__sun__)
  #define USE_CLONE_DEVICE "/dev/ptmx"
  #elif defined (_AIX)
-@@ -1201,8 +1201,8 @@ allocate_pty_desc (pty_desc **desc) {
+@@ -1208,8 +1208,8 @@ allocate_pty_desc (pty_desc **desc) {
     int  master_fd   = -1;
     char *slave_name = NULL;
  
 -#ifdef USE_GETPT
 -  master_fd = getpt ();
-+#ifdef USE_POSIX_OPENPT
++#if defined(USE_POSIX_OPENPT)
 +  master_fd = posix_openpt(O_RDWR | O_NOCTTY);
  #elif defined (USE_OPENPTY)
    status = openpty (&master_fd, &slave_fd, NULL, NULL, NULL);
  #elif defined (USE_CLONE_DEVICE)
+-- 
+2.31.0
+

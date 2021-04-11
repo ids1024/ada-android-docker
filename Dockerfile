@@ -26,7 +26,7 @@ ARG GCC_URL=https://ftp.gnu.org/gnu/gcc/gcc-10.2.0/gcc-10.2.0.tar.xz
 ARG BINUTILS_URL=https://ftp.gnu.org/gnu/binutils/binutils-2.36.1.tar.xz
 
 # Download and extract binutils, gcc, and prerequisites
-COPY ada-musl.patch ada-x86-android.patch download_prerequisites-busybox.patch ./
+COPY ada-musl.patch ada-x86-android.patch ./
 RUN wget $GCC_URL $BINUTILS_URL \
     && tar xf gcc-* \
     && tar xf binutils-* \
@@ -36,7 +36,6 @@ RUN wget $GCC_URL $BINUTILS_URL \
     && cd gcc \
     && patch -p1 -i ../ada-musl.patch \
     && patch -p1 -i ../ada-x86-android.patch \
-    && patch -p1 -i ../download_prerequisites-busybox.patch \
     && ./contrib/download_prerequisites
 COPY build-binutils-gcc.sh ./
 
