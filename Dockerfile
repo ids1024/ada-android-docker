@@ -83,8 +83,22 @@ RUN cd gcc && ../build-binutils-gcc.sh
 
 # Stage to build gprbuild
 FROM $BASE_IMAGE as gprbuild
-RUN apk add --no-cache build-base gcc-gnat gprbuild
+RUN apk add --no-cache build-base gcc-gnat
 
+ARG GPRBUILD_URL=https://community.download.adacore.com/v1/408ec35c3bb86bd227db3da55d3e1e0c572a56e3?filename=gprbuild-2020-20200429-19BD2-src.tar.gz
+ARG XMLADA_URL=https://community.download.adacore.com/v1/c799502295baf074ad17b48c50f621879c392c57?filename=xmlada-2020-20200429-19A99-src.tar.gz
+
+RUN wget $GPRBUILD_URL -O gprbuild.tar.gz \
+    && wget $XMLADA_URL -O xmlada.tar.gz \
+    && tar xf gprbuild.tar.gz \
+    && tar xf xmlada.tar.gz \
+    && mv gprbuild-2020-20200429-19BD2-src gprbuild \
+    && mv xmlada-2020-20200429-19A99-src xmlada \
+    && rm *.tar.*
+
+RUN cd gprbuild \
+    && mkdir -p /toolchain/bin /toolchain/libexec/gprbuild /toolchain/share/gprconfig \
+    && ./bootstrap.sh --prefix=/toolchain --with-xmlada=/xmlada
 
 # Copy toolchain to a clean image
 FROM $BASE_IMAGE
